@@ -65,16 +65,24 @@ def get_dataloaders(batch_size=256, label_ratio=0.1):
 # 2. 模型定义 (Encoder + Projection Head)
 # ==========================================
 class SimCLRModel(nn.Module):
-    def __init__(self, feature_dim=128, projection_dim=64, use_relu=True):
+    def __init__(self, feature_dim=128, projection_dim=64, use_relu=True, encoder_type='resnet18'):
         super().__init__()
-        resnet = models.resnet18(weights=None)
-        resnet.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        resnet.maxpool = nn.Identity()
-        resnet.fc = nn.Identity() 
-        self.encoder = resnet
-        
-        encoder_out_dim = 512 
-        
+        if encoder_type == 'resnet18':
+            resnet = models.resnet18(weights=None)
+            resnet.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+            resnet.maxpool = nn.Identity()
+            resnet.fc = nn.Identity() 
+            self.encoder = resnet
+            encoder_out_dim = 512 
+            
+        elif encoder_type == 'mobilenet_v2':
+            mobilenet = models.mobilenet_v2(weights=None)
+            mobilenet.features[0][0] = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)
+            mobilenet.classifier = nn.Identity()
+            self.encoder = mobilenet
+            encoder_out_dim = 1280 
+        else:
+            raise ValueError("Unsupported encoder type")
         # 附加实验：消融 ReLU
         if use_relu:
             self.projection_head = nn.Sequential(
